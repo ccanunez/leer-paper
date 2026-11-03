@@ -16,8 +16,8 @@ Funciona con papers de cualquier disciplina (física, biología, ciencias de la 
 |---|---|---|
 | **1. Reconocimiento** | Lee abstract, introducción, figuras y conclusiones. Identifica la pregunta científica, la respuesta, la evidencia central y el tipo de paper. | No |
 | **2. Mapa de tópicos** | Propone 4–8 tópicos ordenados por dependencia conceptual, con las páginas, figuras y ecuaciones que cubre cada uno. **Se detiene y espera tu visto bueno.** | No |
-| **3. Guía de estudio** | Escribe la guía en `notes/<slug>/`, junto al PDF. | Sí |
-| **4. Modo tutor** | Explica cada tópico en bloques cortos, te pide que lo expliques con tus palabras (técnica Feynman), te hace preguntas y marca tu progreso. | Sí (progreso) |
+| **3. Guía de estudio** | Escribe la guía en `notes/<slug>/`, junto al PDF, con un script que rehace los cálculos del paper y una revisión crítica según el tipo de paper. | Sí |
+| **4. Modo tutor** | Explica cada tópico en bloques cortos, te pide que lo expliques con tus palabras (técnica Feynman), te hace preguntas y agenda cada una para repaso espaciado. | Sí (progreso) |
 
 ### Qué contiene cada tópico
 Todos siguen la misma plantilla:
@@ -33,14 +33,15 @@ Todos siguen la misma plantilla:
 ### Principios
 - **No inventa.** Todo lo que atribuye al paper está en el paper, con la página citada: `(p. 4, §3.2, Ec. 5)`.
 - **Separa voces.** Lo que agrega Claude (intuiciones, derivaciones intermedias, contexto externo) va marcado como `> 💡 Nota de apoyo:`, para que siempre sepas qué dice el paper y qué no.
-- **Verifica.** Rehace los cálculos clave y lista en la síntesis los que no se reproducen.
+- **Verifica con código.** Escribe `verify.py`, que rehace los cálculos clave con las entradas del paper y dice cuáles se reproducen. Nunca ajusta una entrada para que cuadre: lo que no se reproduce va a la síntesis con su causa probable.
+- **Revisa según el tipo de paper.** Aplica un checklist distinto a un paper observacional, experimental, de simulación, teórico, de aprendizaje automático, instrumental o de revisión ([`checklists.md`](checklists.md)).
 - **Te pregunta antes de escribir.** Nada se escribe hasta que apruebes el mapa de tópicos.
 
 ---
 
 ## Instalación
 
-Requiere [Claude Code](https://docs.claude.com/en/docs/claude-code) (CLI, app de escritorio o extensión de IDE).
+Requiere [Claude Code](https://docs.claude.com/en/docs/claude-code) (CLI, app de escritorio o extensión de IDE) y `python3` para la verificación numérica.
 
 **Para todos tus proyectos** (recomendado):
 
@@ -101,7 +102,11 @@ Toma el primer tópico sin marcar, te lo explica, te pide que lo expliques de vu
 | Comando | Qué hace |
 |---|---|
 | `/leer-paper <slug> tópico 3` | Estudia un tópico concreto |
-| `/leer-paper <slug> quiz` | Repaso mezclado de los tópicos ya completados, priorizando los más antiguos y los que tienen dudas |
+| `/leer-paper <slug> quiz` | Repaso espaciado: las preguntas que tocan hoy, las más atrasadas primero |
+| `/leer-paper <slug> anki` | Exporta las preguntas y el glosario a `anki.txt`, listo para importar en Anki |
+| `/leer-paper comparar <slug1> <slug2> …` | Compara papers que ya tienen guía: supuestos, parámetros en común, dónde discrepan y por qué |
+
+**Repaso espaciado.** Cada pregunta queda en un registro dentro de `00_mapa.md`. Si la respondes bien, el intervalo crece (1 → 3 → 7 → 14 → 30 → 60 días); si fallas, vuelve a 1 día. `quiz` te pregunta lo que toca.
 
 El `<slug>` es un nombre corto que la skill elige al crear la guía (p. ej. `cpd-pds70c-benisty2021`).
 
@@ -113,16 +118,28 @@ El `<slug>` es un nombre corto que la skill elige al crear la guía (p. ej. `cpd
 papers/
 ├── mi-paper.pdf
 └── notes/
+    ├── glosario.md              # glosario compartido entre todas las guías + conflictos de notación
+    ├── comparaciones/
+    │   └── <tema>.md            # resultado de /leer-paper comparar
     └── <slug>/
-        ├── 00_mapa.md           # resumen en 3 líneas, prerrequisitos, glosario, ruta con casillas
+        ├── 00_mapa.md           # resumen en 3 líneas, prerrequisitos, glosario, ruta, registro de repaso
         ├── 01_<tópico>.md
         ├── 02_<tópico>.md
         ├── …
-        └── 99_sintesis.md       # supuestos, puntos a verificar, limitaciones, conexiones, lecturas
+        ├── verify.py            # rehace los cálculos del paper: python3 verify.py
+        ├── 99_sintesis.md       # supuestos, revisión por tipo, puntos a verificar, limitaciones, lecturas
+        └── anki.txt             # sólo si pides /leer-paper <slug> anki
 ```
 
 - **`00_mapa.md`** incluye una tabla de notación (símbolo, significado, unidades, dónde aparece) y la ruta de estudio con casillas `[ ]` que sirven de registro de progreso.
-- **`99_sintesis.md`** es la lectura crítica: qué supuestos hace el paper y cuándo dejarían de valer, qué cálculos no se reproducen, qué limitaciones reconocen (y cuáles no) los autores, qué falta probar, cómo se conecta con tu trabajo y con otros PDFs de la misma carpeta, y qué referencias leer después.
+- **`verify.py`** usa sólo la biblioteca estándar de Python. Cada cálculo cita su página y termina en `OK` o `NO`:
+  ```
+  OK  M_dust CPD, granos de 1 mm [M⊕]: calculado 0.00683, paper 0.007 (p. 6)
+  NO  R_Bondi [au]: calculado 18.5, paper 11 (p. 6) μ = 2.34 (gas molecular)
+  OK  R_Bondi [au]: calculado 11, paper 11 (p. 6) μ = 1.4 reproduce el paper
+  ```
+- **`glosario.md`** crece con cada guía. Si otra guía ya explica un prerrequisito, la nueva la enlaza; si un símbolo cambia de significado entre papers, queda registrado.
+- **`99_sintesis.md`** es la lectura crítica: qué supuestos hace el paper y cuándo dejarían de valer, cómo sale en el checklist de su tipo, qué cálculos no se reproducen, qué limitaciones reconocen (y cuáles no) los autores, qué falta probar, cómo se conecta con tu trabajo y con otros PDFs de la misma carpeta, y qué referencias leer después.
 
 Las ecuaciones se escriben en LaTeX (`$…$`, `$$…$$`) y las respuestas de autoevaluación en bloques `<details>`. Se ven bien en VS Code, Obsidian, GitHub y la mayoría de los visores de Markdown.
 
@@ -132,7 +149,8 @@ Las ecuaciones se escriben en LaTeX (`$…$`, `$$…$$`) y las respuestas de aut
 - **Pon tus PDFs en una carpeta del proyecto** (p. ej. `papers/` o `references/`). Así la síntesis puede relacionar el paper con los demás que tengas.
 - **Si trabajas en un proyecto propio** (tesis, código, manuscrito), Claude lo usará para la sección "Conexión con tu trabajo". Si no encuentra contexto, te preguntará en vez de suponer.
 - **No te saltes la técnica Feynman.** Explicar el tópico con tus palabras es lo que más rápido revela qué no entendiste.
-- **Revisa los "puntos a verificar".** Suelen ser los mejores temas para discutir con tu supervisor o en un journal club.
+- **Revisa los "puntos a verificar".** Suelen ser los mejores temas para discutir con tu supervisor o en un journal club. Puedes editar `verify.py` para probar otros supuestos.
+- **Haz `quiz` unos minutos al día.** El repaso espaciado funciona por constancia, no por sesiones largas.
 
 ## Limitaciones
 - Los PDFs escaneados (sin capa de texto) se leen peor; Claude ve las páginas como imágenes.
@@ -142,7 +160,7 @@ Las ecuaciones se escriben en LaTeX (`$…$`, `$$…$$`) y las respuestas de aut
 ---
 
 ## Contribuir
-Issues y pull requests son bienvenidos. Toda la skill vive en [`SKILL.md`](SKILL.md): son instrucciones en Markdown, no hay código que compilar. Si propones un cambio, cuenta con qué paper lo probaste.
+Issues y pull requests son bienvenidos. La skill vive en [`SKILL.md`](SKILL.md) y los checklists en [`checklists.md`](checklists.md): son instrucciones en Markdown, no hay código que compilar. Los checklists de disciplinas lejanas a la física son los que más se benefician de revisión experta. Si propones un cambio, cuenta con qué paper lo probaste.
 
 ## Licencia
 [MIT](LICENSE)
@@ -155,8 +173,9 @@ Issues y pull requests son bienvenidos. Toda la skill vive en [`SKILL.md`](SKILL
 
 1. **Skim:** extracts the research question, the answer and the key evidence.
 2. **Topic map:** proposes 4–8 topics ordered by conceptual dependency, then waits for your approval.
-3. **Study guide:** writes `notes/<slug>/` next to the PDF. It includes an overview with a glossary and progress checkboxes, one file per topic (plain-language idea, step-by-step equations with order-of-magnitude checks, how to read the key figure, claim → evidence table, self-quiz) and a critical synthesis.
-4. **Tutor mode:** `/leer-paper <slug> siguiente` explains the next topic, asks you to explain it back (Feynman technique), quizzes you and tracks progress. `/leer-paper <slug> quiz` gives you a mixed review.
+3. **Study guide:** writes `notes/<slug>/` next to the PDF. It includes an overview with a glossary and progress checkboxes, one file per topic (plain-language idea, step-by-step equations with order-of-magnitude checks, how to read the key figure, claim → evidence table, self-quiz), a `verify.py` script that recomputes the paper's key numbers, and a critical synthesis with a checklist for the paper type (observational, experimental, simulation, theory, ML, instrumental, review). A shared `notes/glosario.md` links guides together.
+4. **Tutor mode:** `/leer-paper <slug> siguiente` explains the next topic, asks you to explain it back (Feynman technique) and quizzes you. Every question is scheduled for spaced repetition: `/leer-paper <slug> quiz` asks what is due today, and `/leer-paper <slug> anki` exports flashcards for Anki.
+5. **Compare:** `/leer-paper comparar <slug1> <slug2>` contrasts papers that already have a guide: assumptions, shared parameters, where they disagree and why.
 
 It never attributes to the paper anything that isn't in it, cites pages for every claim and flags its own additions with 💡. It writes in your language (Spanish by default).
 
