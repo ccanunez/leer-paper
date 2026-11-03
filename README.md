@@ -1,8 +1,8 @@
 # leer-paper
 
-**Una skill para [Claude Code](https://claude.com/claude-code) que convierte un paper científico en una ruta de estudio lineal, por tópicos, y luego te acompaña como tutor.**
+**Una skill para [Claude Code](https://claude.com/claude-code) que convierte un paper científico en una ruta de estudio lineal, por tópicos, lo verifica con código y luego te enseña como tutor.**
 
-Leer un paper de principio a fin rara vez es la mejor forma de entenderlo. Las secciones no siguen el orden en que se construyen los conceptos, las ecuaciones aparecen sin derivación y las figuras —donde suele vivir el resultado— se leen a la pasada. `leer-paper` reorganiza el contenido en 4–8 tópicos donde cada uno depende solo de los anteriores, escribe una guía de estudio en Markdown y después te enseña tópico a tópico hasta que puedas explicarlo con tus palabras.
+Leer un paper de principio a fin rara vez es la mejor forma de entenderlo. Las secciones no siguen el orden en que se construyen los conceptos, las ecuaciones aparecen sin derivación, los números rara vez se comprueban y las figuras —donde suele vivir el resultado— se leen a la pasada. `leer-paper` reorganiza el contenido en 4–8 tópicos donde cada uno depende solo de los anteriores. Escribe una guía de estudio, rehace los cálculos con sus incertidumbres, busca qué pasó después con el resultado y te enseña tópico a tópico. Solo te evalúa cuando tú digas que estás listo.
 
 Funciona con papers de cualquier disciplina (física, biología, ciencias de la computación, economía…).
 
@@ -14,34 +14,46 @@ Funciona con papers de cualquier disciplina (física, biología, ciencias de la 
 
 | Fase | Qué ocurre | Escribe archivos |
 |---|---|---|
-| **1. Reconocimiento** | Lee abstract, introducción, figuras y conclusiones. Identifica la pregunta científica, la respuesta, la evidencia central y el tipo de paper. | No |
-| **2. Mapa de tópicos** | Propone 4–8 tópicos ordenados por dependencia conceptual, con las páginas, figuras y ecuaciones que cubre cada uno. **Se detiene y espera tu visto bueno.** | No |
-| **3. Guía de estudio** | Escribe la guía en `notes/<slug>/`, junto al PDF, con un script que rehace los cálculos del paper y una revisión crítica según el tipo de paper. | Sí |
-| **4. Modo tutor** | Explica cada tópico en bloques cortos, te pide que lo expliques con tus palabras (técnica Feynman), te hace preguntas y agenda cada una para repaso espaciado. | Sí (progreso) |
+| **1. Reconocimiento** | Lee abstract, introducción, figuras, conclusiones y disponibilidad de datos/código. Identifica la pregunta, la respuesta, la evidencia central y el tipo de paper. | No |
+| **2. Diagnóstico y mapa** | Te hace 2–3 preguntas para ajustar el nivel. Propone 4–8 tópicos ordenados por dependencia conceptual y **espera tu visto bueno**. | No |
+| **3. Guía de estudio** | Escribe la guía en `notes/<slug>/`, con la ficha de parámetros, el script de verificación, el estado actual del resultado y la lectura crítica. | Sí |
+| **4. Tutor** | Te enseña cada tópico en bloques cortos con práctica, pistas, ejemplos numéricos y la técnica Feynman. Te evalúa al final, si quieres, y agenda cada pregunta para repaso espaciado. | Sí (progreso) |
 
-### Qué contiene cada tópico
-Todos siguen la misma plantilla:
-
-1. **Qué vas a aprender** y por qué importa dentro del paper.
-2. **Prerrequisitos** puntuales.
-3. **La idea**: primero en lenguaje llano, luego con rigor y con la página citada.
-4. **Ecuaciones paso a paso**: de dónde salen, los pasos intermedios, el significado de cada término, los casos límite y un **chequeo de orden de magnitud** con los valores del propio paper.
-5. **Cómo leer la figura**: ejes, qué mirar primero y qué conclusión saca el paper.
-6. **Afirmación → evidencia**: qué dato o figura respalda cada afirmación y qué tan sólida es.
-7. **Autoevaluación**: 3–5 preguntas (conceptual, cuantitativa y "¿qué pasaría si…?") con la respuesta oculta.
+### Qué contiene la guía
+- **Un archivo por tópico**, todos con la misma plantilla:
+  - Qué vas a aprender y por qué importa.
+  - Prerrequisitos.
+  - La idea, primero en lenguaje llano y luego con rigor.
+  - Ecuaciones paso a paso, con ejemplo numérico e incertidumbre.
+  - Cómo leer la figura.
+  - Tabla afirmación → evidencia.
+  - Autoevaluación con pistas y respuestas ocultas.
+- **`params.toml`:** todos los valores de entrada del paper, con unidades, incertidumbre y página. Lo puedes importar en tu propio código.
+- **`verify.py`:** rehace los cálculos clave y dice cuáles se reproducen. Propaga las incertidumbres con Monte Carlo e indica qué entrada domina cada resultado. Si tienes sympy, también comprueba pasos algebraicos.
+- **Estado actual del resultado:** busca en [OpenAlex](https://openalex.org) los papers que lo citan, lee sus abstracts y clasifica cada uno como confirma, refina, en tensión, refuta o usa.
+- **Código y datos del paper:** si hay un repositorio público, lo revisa (con tu permiso) y compara lo que dice el texto con lo que hace el código.
+- **Lectura crítica:**
+  - el argumento como diagrama;
+  - un checklist según el tipo de paper (observacional, experimental, simulación, teórico, ML, instrumental o revisión; ver [`checklists.md`](checklists.md));
+  - supuestos, limitaciones y puntos a verificar;
+  - preguntas abiertas conectadas con tu trabajo.
+- **Biblioteca compartida:**
+  - un glosario común con los conflictos de notación entre papers;
+  - un `referencias.bib`;
+  - un índice con tu progreso y lo que toca repasar.
 
 ### Principios
 - **No inventa.** Todo lo que atribuye al paper está en el paper, con la página citada: `(p. 4, §3.2, Ec. 5)`.
-- **Separa voces.** Lo que agrega Claude (intuiciones, derivaciones intermedias, contexto externo) va marcado como `> 💡 Nota de apoyo:`, para que siempre sepas qué dice el paper y qué no.
-- **Verifica con código.** Escribe `verify.py`, que rehace los cálculos clave con las entradas del paper y dice cuáles se reproducen. Nunca ajusta una entrada para que cuadre: lo que no se reproduce va a la síntesis con su causa probable.
-- **Revisa según el tipo de paper.** Aplica un checklist distinto a un paper observacional, experimental, de simulación, teórico, de aprendizaje automático, instrumental o de revisión ([`checklists.md`](checklists.md)).
-- **Te pregunta antes de escribir.** Nada se escribe hasta que apruebes el mapa de tópicos.
+- **Separa voces.** Lo que agrega Claude (intuiciones, derivaciones, literatura posterior) va marcado como `> 💡 Nota de apoyo:`.
+- **Verifica con código.** Nunca ajusta una entrada para que un cálculo cuadre: lo que no se reproduce va a la síntesis con su causa probable.
+- **Enseña antes de evaluar.** El tutor explica, practica contigo y te pide explicarlo con tus palabras. La evaluación llega solo cuando dices que estás listo.
+- **Te pregunta antes de escribir** (el mapa de tópicos) y **antes de descargar** (el código del paper).
 
 ---
 
 ## Instalación
 
-Requiere [Claude Code](https://docs.claude.com/en/docs/claude-code) (CLI, app de escritorio o extensión de IDE) y `python3` para la verificación numérica.
+Requiere [Claude Code](https://docs.claude.com/en/docs/claude-code) (CLI, app de escritorio o extensión de IDE), `python3` 3.11 o superior y `curl`.
 
 **Para todos tus proyectos** (recomendado):
 
@@ -63,14 +75,10 @@ Si la skill no aparece, abre una sesión nueva de Claude Code para que se recarg
 git -C ~/.claude/skills/leer-paper pull
 ```
 
-### Opcional: PDFs largos
-Claude Code lee papers cortos completos sin dependencias. Para leer por rangos de páginas (libros, tesis, papers de más de ~40 páginas) necesitas `poppler`:
-
-```bash
-brew install poppler
-```
-
-En Debian/Ubuntu se instala con `sudo apt-get install poppler-utils`.
+### Opcionales
+- **`poppler`:** para leer por rangos de páginas en libros, tesis y papers de más de ~40 páginas. Se instala con `brew install poppler` en macOS o con `sudo apt-get install poppler-utils` en Debian/Ubuntu.
+- **`sympy`:** para comprobar derivaciones (`pip install sympy`).
+- **`matplotlib`:** para reproducir figuras (`pip install matplotlib`).
 
 ---
 
@@ -80,9 +88,9 @@ En Debian/Ubuntu se instala con `sudo apt-get install poppler-utils`.
 ```
 /leer-paper papers/mi-paper.pdf
 ```
-También se activa con lenguaje natural: *"ayúdame a entender este paper: papers/mi-paper.pdf"*.
+También se activa con lenguaje natural: *"ayúdame a entender este paper: papers/mi-paper.pdf"*. Si solo quieres decidir si vale la pena leerlo, usa `/leer-paper papers/mi-paper.pdf rápido`, que hace un resumen de una página.
 
-Claude te mostrará algo como esto y esperará tu respuesta:
+Claude te hará un par de preguntas de diagnóstico, te mostrará algo como esto y esperará tu respuesta:
 
 | # | Tópico | Objetivo | Cubre | Prerrequisitos |
 |---|---|---|---|---|
@@ -96,17 +104,42 @@ Puedes pedir ajustes ("une el 2 y el 3", "sáltate la parte instrumental") antes
 ```
 /leer-paper <slug> siguiente
 ```
-Toma el primer tópico sin marcar, te lo explica, te pide que lo expliques de vuelta y te hace las preguntas. Si las respondes bien, lo marca `[x]` en el mapa; si no, repasa la parte débil y anota la duda en el archivo del tópico.
+Una sesión recorre el tópico completo, un bloque por mensaje:
 
-### 3. Otros comandos
+1. Dónde estás en el mapa.
+2. Un repaso rápido de los prerrequisitos.
+3. Bloques de contenido, cada uno con una pregunta de práctica sin nota y pistas graduadas si te trabas:
+   - la intuición;
+   - lo que dice el paper;
+   - la ecuación, que derivas tú;
+   - un ejemplo numérico en el que primero predices el resultado;
+   - un "¿qué pasaría si…?" con las incertidumbres;
+   - la figura;
+   - la crítica y el estado actual;
+   - la conexión con tu trabajo.
+4. Explicar el tópico con tus palabras (técnica Feynman).
+5. Escribir tu resumen.
+
+Al final te pregunta si quieres evaluarte ahora o en otro momento (`evaluar N`). Si apruebas, el tópico queda marcado `[x]` y se pinta en el mapa conceptual.
+
+### 3. Repasar
 | Comando | Qué hace |
 |---|---|
-| `/leer-paper <slug> tópico 3` | Estudia un tópico concreto |
-| `/leer-paper <slug> quiz` | Repaso espaciado: las preguntas que tocan hoy, las más atrasadas primero |
-| `/leer-paper <slug> anki` | Exporta las preguntas y el glosario a `anki.txt`, listo para importar en Anki |
-| `/leer-paper comparar <slug1> <slug2> …` | Compara papers que ya tienen guía: supuestos, parámetros en común, dónde discrepan y por qué |
+| `/leer-paper <slug> quiz` | Las preguntas de esta guía que tocan hoy, reformuladas para que no las respondas de memoria |
+| `/leer-paper hoy` | Las que tocan hoy en **todas** tus guías, intercaladas |
+| `/leer-paper <slug> anki` | Exporta preguntas y glosario a `anki.txt`, listo para importar en Anki |
 
-**Repaso espaciado.** Cada pregunta queda en un registro dentro de `00_mapa.md`. Si la respondes bien, el intervalo crece (1 → 3 → 7 → 14 → 30 → 60 días); si fallas, vuelve a 1 día. `quiz` te pregunta lo que toca.
+Cada pregunta queda en un registro. Si la respondes bien, el intervalo crece (1 → 3 → 7 → 14 → 30 → 60 días); si fallas, vuelve a 1.
+
+### 4. Ir más allá
+| Comando | Qué hace |
+|---|---|
+| `/leer-paper <slug> tópico N` | Estudia un tópico concreto |
+| `/leer-paper <slug> figura N` | Reproduce la figura N con código, a partir de las tablas y ecuaciones del paper. Puede superponer tus datos |
+| `/leer-paper <slug> actualizar` | Rehace la búsqueda de qué pasó después con el resultado |
+| `/leer-paper <slug> journal-club` | Guion por minuto, preguntas probables del público y preguntas para la discusión |
+| `/leer-paper <slug> referee` | Informe de referee como ejercicio de lectura crítica |
+| `/leer-paper comparar <slug1> <slug2> …` | Compara papers con guía: supuestos, parámetros comunes, dónde discrepan y por qué |
 
 El `<slug>` es un nombre corto que la skill elige al crear la guía (p. ej. `cpd-pds70c-benisty2021`).
 
@@ -118,49 +151,66 @@ El `<slug>` es un nombre corto que la skill elige al crear la guía (p. ej. `cpd
 papers/
 ├── mi-paper.pdf
 └── notes/
-    ├── glosario.md              # glosario compartido entre todas las guías + conflictos de notación
-    ├── comparaciones/
-    │   └── <tema>.md            # resultado de /leer-paper comparar
+    ├── README.md                # índice: progreso y repasos pendientes de cada guía
+    ├── glosario.md              # glosario compartido + conflictos de notación
+    ├── referencias.bib          # BibTeX de todas las guías
+    ├── comparaciones/<tema>.md  # /leer-paper comparar
     └── <slug>/
-        ├── 00_mapa.md           # resumen en 3 líneas, prerrequisitos, glosario, ruta, registro de repaso
-        ├── 01_<tópico>.md
-        ├── 02_<tópico>.md
-        ├── …
-        ├── verify.py            # rehace los cálculos del paper: python3 verify.py
-        ├── 99_sintesis.md       # supuestos, revisión por tipo, puntos a verificar, limitaciones, lecturas
-        └── anki.txt             # sólo si pides /leer-paper <slug> anki
+        ├── 00_mapa.md           # resumen, mapa conceptual (Mermaid), glosario, ruta, registro de repaso
+        ├── 01_<tópico>.md … NN_<tópico>.md
+        ├── params.toml          # valores de entrada con unidades, incertidumbre y página
+        ├── verify.py            # python3 verify.py
+        ├── 99_sintesis.md       # argumento, checklist, puntos a verificar, estado actual, ideas
+        ├── figuras/             # /leer-paper <slug> figura N
+        ├── codigo/              # código del paper, si lo descargaste
+        └── anki.txt, journal_club.md, referee.md, resumen.md   # según los comandos que uses
 ```
 
-- **`00_mapa.md`** incluye una tabla de notación (símbolo, significado, unidades, dónde aparece) y la ruta de estudio con casillas `[ ]` que sirven de registro de progreso.
-- **`verify.py`** usa sólo la biblioteca estándar de Python. Cada cálculo cita su página y termina en `OK` o `NO`:
-  ```
-  OK  M_dust CPD, granos de 1 mm [M⊕]: calculado 0.00683, paper 0.007 (p. 6)
-  NO  R_Bondi [au]: calculado 18.5, paper 11 (p. 6) μ = 2.34 (gas molecular)
-  OK  R_Bondi [au]: calculado 11, paper 11 (p. 6) μ = 1.4 reproduce el paper
-  ```
-- **`glosario.md`** crece con cada guía. Si otra guía ya explica un prerrequisito, la nueva la enlaza; si un símbolo cambia de significado entre papers, queda registrado.
-- **`99_sintesis.md`** es la lectura crítica: qué supuestos hace el paper y cuándo dejarían de valer, cómo sale en el checklist de su tipo, qué cálculos no se reproducen, qué limitaciones reconocen (y cuáles no) los autores, qué falta probar, cómo se conecta con tu trabajo y con otros PDFs de la misma carpeta, y qué referencias leer después.
+Ejemplo de salida de `verify.py`:
+```
+OK  M_dust CPD, granos de 1 mm [M⊕]: calculado 0.00683, paper 0.007 (p. 6)
+    ↳ M_dust, 1 mm [M⊕]: 0.00563 (+0.0024 / −0.0013), percentiles 16–50–84
+      T_cpd      cambia el resultado hasta 45%
+      F_pico     cambia el resultado hasta 10%
+NO  R_Bondi [au]: calculado 18.5, paper 11 (p. 6) con μ = 2.34 (gas molecular)
+OK  R_Bondi [au]: calculado 11, paper 11 (p. 6) con μ = 1.4 se reproduce
+```
 
-Las ecuaciones se escriben en LaTeX (`$…$`, `$$…$$`) y las respuestas de autoevaluación en bloques `<details>`. Se ven bien en VS Code, Obsidian, GitHub y la mayoría de los visores de Markdown.
+Las ecuaciones se escriben en LaTeX (`$…$`, `$$…$$`) y los diagramas en Mermaid. Se ven bien en GitHub, Obsidian y VS Code (con una extensión de Mermaid).
 
 ---
 
 ## Consejos
-- **Pon tus PDFs en una carpeta del proyecto** (p. ej. `papers/` o `references/`). Así la síntesis puede relacionar el paper con los demás que tengas.
-- **Si trabajas en un proyecto propio** (tesis, código, manuscrito), Claude lo usará para la sección "Conexión con tu trabajo". Si no encuentra contexto, te preguntará en vez de suponer.
-- **No te saltes la técnica Feynman.** Explicar el tópico con tus palabras es lo que más rápido revela qué no entendiste.
-- **Revisa los "puntos a verificar".** Suelen ser los mejores temas para discutir con tu supervisor o en un journal club. Puedes editar `verify.py` para probar otros supuestos.
-- **Haz `quiz` unos minutos al día.** El repaso espaciado funciona por constancia, no por sesiones largas.
+- **Pon tus PDFs en una carpeta del proyecto** (p. ej. `papers/` o `references/`). Así la síntesis puede relacionar el paper con los demás y el glosario crece en un solo lugar.
+- **Si trabajas en un proyecto propio** (tesis, código, manuscrito), Claude lo usará para la conexión con tu trabajo y las preguntas abiertas. Si no encuentra contexto, te preguntará en vez de suponer.
+- **Responde las preguntas de práctica antes de pedir la respuesta.** Equivocarte en una predicción y ver por qué es la parte del tutor que más enseña.
+- **Evalúate al día siguiente**, no justo después de estudiar: mide mejor lo que retienes.
+- **Haz `/leer-paper hoy` unos minutos al día.** El repaso espaciado funciona por constancia, no por sesiones largas.
+- **Edita `params.toml`** para probar otros supuestos, y vuelve a correr `verify.py`.
 
 ## Limitaciones
 - Los PDFs escaneados (sin capa de texto) se leen peor; Claude ve las páginas como imágenes.
 - La calidad de las derivaciones depende de lo completo que sea el paper. Cuando falta información, la guía lo dice en lugar de rellenar.
+- El estado actual se basa en abstracts de OpenAlex. Es un buen punto de partida, no una revisión bibliográfica: lee los papers que importan.
+- Cuando el paper no da una incertidumbre, `params.toml` puede usar un supuesto marcado con 💡. Revísalo antes de citar un resultado.
 - Es una ayuda de estudio, no un sustituto de leer el paper: verifica las citas de página en el original.
 
 ---
 
 ## Contribuir
-Issues y pull requests son bienvenidos. La skill vive en [`SKILL.md`](SKILL.md) y los checklists en [`checklists.md`](checklists.md): son instrucciones en Markdown, no hay código que compilar. Los checklists de disciplinas lejanas a la física son los que más se benefician de revisión experta. Si propones un cambio, cuenta con qué paper lo probaste.
+Issues y pull requests son bienvenidos. Son instrucciones en Markdown más un script de Python; no hay nada que compilar.
+
+| Archivo | Qué contiene |
+|---|---|
+| [`SKILL.md`](SKILL.md) | Flujo principal y comandos |
+| [`plantillas.md`](plantillas.md) | Plantillas de todos los archivos |
+| [`verificacion.md`](verificacion.md) | `params.toml`, `verify.py`, figuras |
+| [`investigacion.md`](investigacion.md) | Estado actual, código del paper, BibTeX |
+| [`tutor.md`](tutor.md) | Tutor, evaluación, repaso espaciado |
+| [`checklists.md`](checklists.md) | Revisión crítica por tipo de paper |
+| [`scripts/citas.py`](scripts/citas.py) | Búsqueda de citas en OpenAlex |
+
+Si propones un cambio, cuenta con qué paper lo probaste. Los checklists de disciplinas lejanas a la física son los que más se benefician de revisión experta.
 
 ## Licencia
 [MIT](LICENSE)
@@ -169,13 +219,24 @@ Issues y pull requests son bienvenidos. La skill vive en [`SKILL.md`](SKILL.md) 
 
 ## English summary
 
-**`leer-paper` is a [Claude Code](https://claude.com/claude-code) skill that turns a scientific paper into a linear, topic-by-topic study path and then tutors you through it.**
+**`leer-paper` is a [Claude Code](https://claude.com/claude-code) skill that turns a scientific paper into a linear, topic-by-topic study path, checks it with code and then tutors you through it.**
 
-1. **Skim:** extracts the research question, the answer and the key evidence.
-2. **Topic map:** proposes 4–8 topics ordered by conceptual dependency, then waits for your approval.
-3. **Study guide:** writes `notes/<slug>/` next to the PDF. It includes an overview with a glossary and progress checkboxes, one file per topic (plain-language idea, step-by-step equations with order-of-magnitude checks, how to read the key figure, claim → evidence table, self-quiz), a `verify.py` script that recomputes the paper's key numbers, and a critical synthesis with a checklist for the paper type (observational, experimental, simulation, theory, ML, instrumental, review). A shared `notes/glosario.md` links guides together.
-4. **Tutor mode:** `/leer-paper <slug> siguiente` explains the next topic, asks you to explain it back (Feynman technique) and quizzes you. Every question is scheduled for spaced repetition: `/leer-paper <slug> quiz` asks what is due today, and `/leer-paper <slug> anki` exports flashcards for Anki.
-5. **Compare:** `/leer-paper comparar <slug1> <slug2>` contrasts papers that already have a guide: assumptions, shared parameters, where they disagree and why.
+1. **Skim:** extracts the research question, the answer, the key evidence and whether data or code are public.
+2. **Diagnose and map:** asks a few questions to set your level, then proposes 4–8 topics ordered by conceptual dependency and waits for your approval.
+3. **Study guide:** writes `notes/<slug>/` next to the PDF. It contains:
+   - a file per topic: plain-language idea, step-by-step equations, how to read the key figure, claim → evidence table and a self-quiz with hints;
+   - `params.toml`, with every input value, its unit, uncertainty and page;
+   - `verify.py`, which recomputes the key numbers, propagates uncertainties with Monte Carlo and ranks which input dominates each result;
+   - a "current status" section built from the papers that cite it (via OpenAlex);
+   - a critical synthesis with the argument as a Mermaid diagram, a checklist for the paper type and open research questions.
+
+   A shared glossary, a BibTeX file and a library index tie the guides together.
+4. **Tutor:** `/leer-paper <slug> siguiente` teaches one topic in short blocks, with practice questions, graded hints, predict-then-check numerical examples and the Feynman technique. It only evaluates you when you say you are ready. Every question is scheduled for spaced repetition: `quiz` covers one guide, `hoy` covers your whole library, and `anki` exports flashcards.
+5. **More:**
+   - `figura N` reproduces a figure;
+   - `comparar` contrasts papers;
+   - `journal-club` and `referee` prepare a talk or a review;
+   - `actualizar` refreshes the literature search.
 
 It never attributes to the paper anything that isn't in it, cites pages for every claim and flags its own additions with 💡. It writes in your language (Spanish by default).
 
